@@ -326,4 +326,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT © [ksoze84](https://github.com/ksoze84)
+MIT © [ksoze84 Felipe Rodriguez Herrera](https://github.com/ksoze84)
