@@ -1,17 +1,53 @@
 {
   "name": "use-keep",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.0.2",
+  "description": "A lightweight React state management library with external store capabilities",
+  "keywords": [
+    "react",
+    "state",
+    "hooks",
+    "store",
+    "management"
+  ],
+  "license": "MIT",
+  "author": "ksoze84",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ksoze84/use-keep.git"
+  },
   "type": "module",
+  "main": "./dist/use-keep.cjs",
+  "module": "./dist/use-keep.js",
+  "types": "./dist/main.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/use-keep.js",
+      "require": "./dist/use-keep.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "dependencies": {
+    "use-sync-external-store": "^1.6.0"
   },
   "devDependencies": {
+    "@types/node": "^24.6.2",
     "@types/react": ">=16",
+    "@types/use-sync-external-store": "^1.5.0",
     "typescript": "~5.9.3",
-    "vite": "^7.1.7"
+    "vite": "^7.1.7",
+    "vite-plugin-dts": "^4.5.4"
   },
   "peerDependencies": {
     "react": ">=16"

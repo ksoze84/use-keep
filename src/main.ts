@@ -1,4 +1,6 @@
-import { useDebugValue, useSyncExternalStore } from "react";
+import { useDebugValue } from "react";
+// @ts-ignore - use-sync-external-store shim for React <18 compatibility
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 
 const notProvided = Symbol("notProvided");
 
