@@ -284,7 +284,7 @@ function App() {
 }
 ```
 
-### Local Instance with useKeeperS
+### Local Instance with useKeeper
 
 ```tsx
 function AppB() {
