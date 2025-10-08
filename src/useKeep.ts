@@ -34,7 +34,6 @@ import { KeepType } from "./keep";
  * The component will re-render whenever the store value changes.
  * 
  * @template T The type of the state value
- * @template K The type of additional methods (if any)
  * @param store Store instance created by keep()
  * @returns Current state value from the store
  * 
