@@ -157,7 +157,7 @@ function Component() {
 
 ## Examples
 
-### Basic Counter (from Examples/Simple.tsx)
+### Basic Counter
 
 ```tsx
 import { keep, useKeep } from 'use-keep';
@@ -240,7 +240,7 @@ function createCubeCounter(initial = 0) {
 }
 ```
 
-### Data Loading with Classes (from Examples/ActividadesHandler.ts)
+### Data Loading with Classes
 
 ```tsx
 export class ActividadesHandler {
@@ -284,7 +284,7 @@ function App() {
 }
 ```
 
-### Local Instance with useKeeper (from Examples/AppB.tsx)
+### Local Instance with useKeeperS
 
 ```tsx
 function AppB() {
