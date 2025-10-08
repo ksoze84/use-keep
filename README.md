@@ -1,19 +1,22 @@
 # use-keep
 
-A lightweight React state management library that provides a simple alternative to `useState` with external store capabilities. Share state across components while maintaining React's familiar hook patterns.
+A lightweight React state management library with external store capabilities, providing simple yet powerful tools for managing component and application state.
 
 [![npm version](https://badge.fury.io/js/use-keep.svg)](https://badge.fury.io/js/use-keep)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-## Features
+## Table of Contents
 
-- 🪶 **Lightweight**: Minimal bundle size with zero dependencies (except React peer)
-- 🔄 **React 16-18+ Compatible**: Works with all modern React versions using `useSyncExternalStore` shim
-- 🎯 **Simple API**: Familiar getter/setter pattern similar to `useState`
-- 🔗 **External Store**: Share state between components without prop drilling
-- 🛠️ **Extensible**: Add custom methods to your stores
-- 📘 **TypeScript**: Full type safety with comprehensive TypeScript support
-- ⚡ **Performance**: Efficient subscription-based updates
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Core Concepts](#core-concepts)
+- [API Reference](#api-reference)
+- [Examples](#examples)
+- [Comparison Table](#comparison-table)
+- [Advanced Usage](#advanced-usage)
+- [Best Practices](#best-practices)
+- [TypeScript Support](#typescript-support)
 
 ## Installation
 
@@ -21,24 +24,83 @@ A lightweight React state management library that provides a simple alternative 
 npm install use-keep
 ```
 
+```bash
+yarn add use-keep
+```
+
+```bash
+pnpm add use-keep
+```
+
 ## Quick Start
 
-```typescript
+### Simple Counter Example
+
+The most basic usage - create a store and use it in components:
+
+```tsx
 import { keep, useKeep } from 'use-keep';
 
-// Create a store
+// Create a store outside your component
 const counter = keep(0);
 
-// Use in components
 function Counter() {
   const count = useKeep(counter);
-  // or: const count = counter.use();
   
   return (
     <div>
       <span>Count: {count}</span>
-      <button onClick={() => counter(count + 1)}>+</button>
+      <button onClick={() => counter(c => c + 1)}>+</button>
       <button onClick={() => counter(c => c - 1)}>-</button>
+      <button onClick={() => counter(0)}>Reset</button>
+    </div>
+  );
+}
+```
+
+That's it! Multiple components using the same store will automatically stay in sync.
+
+## Core Concepts
+
+### 1. **keep()** - Create Stores
+
+```tsx
+// Simple store
+const count = keep(0);
+
+// Store with initial complex data
+const user = keep({ name: 'John', age: 25 });
+
+// Store with methods
+const counter = keep(0, {
+  increment: () => counter(c => c + 1),
+  decrement: () => counter(c => c - 1),
+  reset: () => counter(0)
+});
+```
+
+### 2. **useKeep()** - Subscribe to Stores
+
+```tsx
+function MyComponent() {
+  const value = useKeep(myStore);
+  // Component re-renders when store changes
+  return <div>{value}</div>;
+}
+```
+
+### 3. **useKeeper()** - Create Local Stores
+
+```tsx
+function Component() {
+  // Creates a store that exists only for this component instance
+  const localCounter = useKeeper(() => keep(0));
+  const count = useKeep(localCounter);
+  
+  return (
+    <div>
+      <span>{count}</span>
+      <button onClick={() => localCounter(c => c + 1)}>+</button>
     </div>
   );
 }
@@ -46,284 +108,456 @@ function Counter() {
 
 ## API Reference
 
-### `keep<T>(initialState: T)`
+### `keep<T>(initialValue: T): KeepType<T>`
 
-Creates a new store with the given initial state.
+Creates a new store with an initial value.
 
-```typescript
-const store = keep(0);
+```tsx
+const store = keep(initialValue);
 
 // Get current value
 const value = store();
 
 // Set new value
-store(42);
+store(newValue);
 
-// Set with function
-store(prev => prev + 1);
+// Update with function
+store(currentValue => newValue);
 
-// Subscribe to changes (used internally by useKeep)
-const unsubscribe = store.subscribe(() => console.log('Changed!'));
-
-// Use in React component - both methods are equivalent
-const Component = () => {
-  const value = store.use(); // Calls useKeep(store) internally
-  // or: const value = useKeep(store);
-  return <div>{value}</div>;
-};
+// Subscribe to changes
+const unsubscribe = store.subscribe(() => {
+  console.log('Store changed:', store());
+});
 ```
 
-### `keep<T, S>(initialState: T, methods: S)`
+### `keep<T, S>(initialValue: T, methods: S): KeepType<T> & S`
 
-Creates a store with additional methods attached.
+Creates a store with additional methods.
 
-```typescript
+```tsx
 const counter = keep(0, {
   increment: () => counter(c => c + 1),
   decrement: () => counter(c => c - 1),
   reset: () => counter(0)
 });
 
-// Use the methods
-counter.increment();
-counter.decrement();
-counter.reset();
+counter.increment(); // Use attached method
 ```
 
-### `store.use()`
+### `useKeep<T>(store: KeepType<T>): T`
 
-Convenience method that calls `useKeep(store)` internally. This method enables reactive composition - the component will re-render when the store changes.
+React hook that subscribes to a store and returns its current value.
 
-```typescript
-const counter = keep(0);
-
-function Component() {
-  const value = counter.use(); // Equivalent to useKeep(counter)
-  // Component re-renders when counter changes
-  return <div>Count: {value}</div>;
-}
-
-// Perfect for composition patterns
-const shapes = () => {
-  const triangles = keep(0);
-  const squares = keep(0);
-  
-  return {
-    useTotal: () => triangles.use() + squares.use(), // Both stores are reactive
-    useTriangles: () => triangles.use(),
-    useSquares: () => squares.use()
-  };
-};
-```
-
-### `useKeep<T>(store)`
-
-React hook to subscribe to store changes. Functionally identical to `store.use()`.
-
-```typescript
+```tsx
 function Component() {
   const value = useKeep(store);
-  // Component re-renders when store changes
   return <div>{value}</div>;
 }
 ```
 
-## Usage Patterns
+### `useKeeper<T>(factory: () => T): T`
 
-### Basic Counter
+React hook that creates and maintains a value using lazy initialization.
 
-```typescript
-import { keep } from 'use-keep';
+```tsx
+function Component() {
+  // This store is unique to this component instance
+  const localStore = useKeeper(() => keep(0));
+  return <div>{useKeep(localStore)}</div>;
+}
+```
 
-const counter = keep(0, {
-  increment: () => counter(c => c + 1),
-  decrement: () => counter(c => c - 1),
-  reset: () => counter(0)
-});
+### `usePeek<T, L>(initialValue: T, extension: (store: KeepType<T>) => L): [T, KeepType<T> & L]`
 
-function Counter() {
-  const count = counter.use();
+Creates a local store with extensions using useReducer internally.
+
+```tsx
+function Component() {
+  const [count, counter] = usePeek(0, store => ({
+    increment: () => store(c => c + 1),
+    decrement: () => store(c => c - 1)
+  }));
   
   return (
     <div>
-      <span>Count: {count}</span>
+      <span>{count}</span>
       <button onClick={counter.increment}>+</button>
-      <button onClick={counter.decrement}>-</button>
-      <button onClick={counter.reset}>Reset</button>
     </div>
   );
 }
 ```
 
-### Complex State with Methods
+## Examples
 
-```typescript
-const todos = keep([] as Todo[], {
-  add: (text: string) => todos(prev => [
-    ...prev,
-    { id: Date.now(), text, completed: false }
-  ]),
-  
-  toggle: (id: number) => todos(prev => 
-    prev.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    )
-  ),
-  
-  remove: (id: number) => todos(prev => 
-    prev.filter(todo => todo.id !== id)
-  )
-});
-```
+### Basic Counter (from Examples/Simple.tsx)
 
-### Factory Pattern
+```tsx
+import { keep, useKeep } from 'use-keep';
 
-```typescript
-const createCounter = (initial = 0) => {
-  const store = keep(initial);
-  
-  return {
-    useValue: () => store.use(),
-    increment: () => store(s => s + 1),
-    decrement: () => store(s => s - 1),
-    reset: () => store(initial),
-    setValue: (value: number) => store(value)
-  };
-};
+// Global store
+const chairs = keep(0);
 
-const counter1 = createCounter(0);
-const counter2 = createCounter(10);
-```
+// Global actions
+const increment = () => chairs(s => s + 1);
+const decrement = () => chairs(s => s - 1);
+const reset = () => chairs(0);
 
-### Class-based Store
-
-```typescript
-class UserStore {
-  private userState = keep({ name: '', email: '' });
-  private loadingState = keep(false);
-
-  load = async (userId: string) => {
-    this.loadingState(true);
-    try {
-      const user = await fetchUser(userId);
-      this.userState(user);
-    } finally {
-      this.loadingState(false);
-    }
-  };
-
-  updateName = (name: string) => {
-    this.userState(prev => ({ ...prev, name }));
-  };
-
-  useUser = () => this.userState.use();
-  useLoading = () => this.loadingState.use();
-}
-
-export const userStore = new UserStore();
-```
-
-### Form Handling
-
-```typescript
-const formStore = keep({ name: '', email: '' }, {
-  setName: (name: string) => formStore(prev => ({ ...prev, name })),
-  setEmail: (email: string) => formStore(prev => ({ ...prev, email })),
-  reset: () => formStore({ name: '', email: '' }),
-  
-  // Custom hook pattern
-  useField: (field: 'name' | 'email') => {
-    const form = formStore.use();
-    return [
-      form[field],
-      (value: string) => formStore(prev => ({ ...prev, [field]: value }))
-    ] as const;
-  }
-});
-
-function MyForm() {
-  const [name, setName] = formStore.useField('name');
-  const [email, setEmail] = formStore.useField('email');
+function Chairs() {
+  const chairCount = useKeep(chairs);
   
   return (
-    <form>
-      <input value={name} onChange={e => setName(e.target.value)} />
-      <input value={email} onChange={e => setEmail(e.target.value)} />
-      <button type="button" onClick={formStore.reset}>Reset</button>
-    </form>
+    <>
+      <span>Chairs: {chairCount}</span>
+      <button onClick={increment}>+</button>
+      <button onClick={decrement}>-</button>
+      <button onClick={reset}>Reset</button>
+    </>
   );
 }
 ```
 
-### Multiple Store Composition
+### Store Factory Pattern
 
-```typescript
-const shapes = () => {
-  const triangles = keep(0, {
-    increment: () => triangles(t => t + 1),
-    decrement: () => triangles(t => t - 1),
-    reset: () => triangles(0)
-  });
-  
-  const squares = keep(0, {
-    increment: () => squares(s => s + 1),
-    decrement: () => squares(s => s - 1),
-    reset: () => squares(0)
-  });
-
+```tsx
+const createLampStore = (lamp = keep(0)) => {
   return {
-    useTriangles: () => [triangles.use(), triangles] as const,
-    useSquares: () => [squares.use(), squares] as const,
-    useTotal: () => triangles.use() + squares.use()
+    useL: () => useKeep(lamp),
+    add: () => lamp(lamp() + 1),
+    sub: () => lamp(l => --l),
+    reset: () => lamp(0)
   };
 };
 
-const shapeStore = shapes();
+const lamps = createLampStore();
+
+function Lamps() {
+  const lampCount = lamps.useL();
+  
+  return (
+    <>
+      <span>Lamps: {lampCount}</span>
+      <button onClick={lamps.add}>+</button>
+      <button onClick={lamps.sub}>-</button>
+      <button onClick={lamps.reset}>Reset</button>
+    </>
+  );
+}
+```
+
+### Complex State Management with useKeeper
+
+```tsx
+function Cubes() {
+  const cubes = useKeeper(() => createCubeCounter(3));
+  const [cubeCount, { increment, decrement, reset }] = [cubes.use(), cubes];
+  
+  return (
+    <>
+      <span>Cubes: {cubeCount}</span>
+      <button onClick={increment}>+</button>
+      <button onClick={decrement}>-</button>
+      <button onClick={reset}>Reset</button>
+    </>
+  );
+}
+
+function createCubeCounter(initial = 0) {
+  const cubes = keep(initial);
+  return {
+    use: () => useKeep(cubes),
+    increment: () => cubes(c => c + 1),
+    decrement: () => cubes(c => c - 1),
+    reset: () => cubes(initial)
+  };
+}
+```
+
+### Data Loading with Classes (from Examples/ActividadesHandler.ts)
+
+```tsx
+export class ActividadesHandler {
+  public data = keep([] as Record<string, any>[]);
+  public loading = keep(false);
+
+  load = () => {
+    this.loading(true);
+    return fetch('/api/activities')
+      .then(r => r.json())
+      .then(data => {
+        this.loading(false);
+        this.data(data);
+      });
+  }
+
+  setProduct = (e: ChangeEvent<HTMLInputElement>, id: string) => {
+    const value = e.target.value;
+    this.data(this.data().map(item => 
+      item.id === id ? { ...item, product: value } : item
+    ));
+  }
+}
+
+// Global instance
+export const activities = new ActividadesHandler();
+
+// Usage in components
+function App() {
+  const [acts, isLoading] = [
+    useKeep(activities.data), 
+    useKeep(activities.loading)
+  ];
+
+  return (
+    <div>
+      {isLoading ? 'Loading...' : `${acts.length} items loaded`}
+      <button onClick={activities.load}>Reload</button>
+    </div>
+  );
+}
+```
+
+### Local Instance with useKeeper (from Examples/AppB.tsx)
+
+```tsx
+function AppB() {
+  // Each component instance gets its own handler
+  const actsHandler = useKeeper(() => new ActividadesHandler());
+  const [acts, loading] = [
+    useKeep(actsHandler.data), 
+    useKeep(actsHandler.loading)
+  ];
+
+  useEffect(() => {
+    actsHandler.load();
+  }, []);
+
+  return (
+    <div>
+      <span>
+        {loading ? 'Loading...' : `${acts.length} activities found`}
+      </span>
+      <button onClick={actsHandler.load}>Search</button>
+    </div>
+  );
+}
+```
+
+## Comparison Table
+
+| Feature | `keep()` | `useKeep()` | `useKeeper()` | `usePeek()` |
+|---------|----------|-------------|---------------|-------------|
+| **Purpose** | Create external stores | Subscribe to stores | Create local stores | Create local stores with useReducer |
+| **Scope** | Global/Module | Component subscription | Component instance | Component instance |
+| **Persistence** | Permanent until cleanup | N/A (subscription only) | Component lifetime | Component lifetime |
+| **Sharing** | ✅ Multiple components | ✅ Subscribe from anywhere | ❌ Component-local only | ❌ Component-local only |
+| **Memory** | Manual cleanup needed | Auto cleanup on unmount | Auto cleanup on unmount | Auto cleanup on unmount |
+| **Performance** | Excellent (external store) | Excellent (useSyncExternalStore) | Good (useRef based) | Good (useReducer based) |
+| **Use Case** | App-wide state | Subscribe to global state | Component-specific stores | Local state with custom logic |
+| **Initial Value** | Required | N/A | Lazy initialization | Direct value + extensions |
+| **Methods** | Optional extensions | N/A | Factory function return | Extension function |
+| **Type Safety** | Full TypeScript support | Inherits from store | Factory function types | Tuple return type |
+
+### When to Use What
+
+- **`keep()`**: For application-wide state, shared stores, persistent data
+- **`useKeep()`**: To subscribe any component to a store created with `keep()`
+- **`useKeeper()`**: For component-specific stores, expensive object creation, local caches
+- **`usePeek()`**: For local state with custom extensions, when you need both value and methods
+
+## Advanced Usage
+
+### Store Composition
+
+```tsx
+const figures = () => {
+  const triangles = keep(0);
+  const squares = keep(0);
+  const circles = keep(0);
+
+  return {
+    useTriangles: () => [useKeep(triangles), {
+      increment: () => triangles(t => t + 1),
+      decrement: () => triangles(t => t - 1),
+      reset: () => triangles(0)
+    }] as const,
+    
+    useTotal: () => useKeep(triangles) + useKeep(squares) + useKeep(circles)
+  };
+};
+
+const shapesStore = figures();
+
+function Total() {
+  const total = shapesStore.useTotal();
+  return <h1>Total: {total}</h1>;
+}
+```
+
+### Conditional Store Creation
+
+```tsx
+function ConditionalComponent({ useGlobal }: { useGlobal: boolean }) {
+  const store = useKeeper(() => 
+    useGlobal ? globalCounter : keep(0)
+  );
+  
+  const count = useKeep(store);
+  return <div>{count}</div>;
+}
+```
+
+### Store with Complex State
+
+```tsx
+interface TodoState {
+  items: Todo[];
+  filter: 'all' | 'active' | 'completed';
+  loading: boolean;
+}
+
+const todoStore = keep<TodoState>({
+  items: [],
+  filter: 'all',
+  loading: false
+}, {
+  addTodo: (text: string) => todoStore(state => ({
+    ...state,
+    items: [...state.items, { id: Date.now(), text, completed: false }]
+  })),
+  
+  toggleTodo: (id: number) => todoStore(state => ({
+    ...state,
+    items: state.items.map(item => 
+      item.id === id ? { ...item, completed: !item.completed } : item
+    )
+  })),
+  
+  setFilter: (filter: TodoState['filter']) => todoStore(state => ({
+    ...state,
+    filter
+  }))
+});
+```
+
+## Best Practices
+
+### 1. Store Organization
+
+```tsx
+// ✅ Good: Organize related stores
+const userStore = {
+  profile: keep(null as User | null),
+  preferences: keep({ theme: 'light', lang: 'en' }),
+  sessions: keep([])
+};
+
+// ❌ Avoid: Too many separate global stores
+const userName = keep('');
+const userAge = keep(0);
+const userEmail = keep('');
+```
+
+### 2. Method Naming
+
+```tsx
+// ✅ Good: Clear, consistent naming
+const counter = keep(0, {
+  increment: () => counter(c => c + 1),
+  decrement: () => counter(c => c - 1),
+  reset: () => counter(0),
+  set: (value: number) => counter(value)
+});
+
+// ❌ Avoid: Unclear method names
+const counter = keep(0, {
+  plus: () => counter(c => c + 1),
+  sub: () => counter(c => c - 1),
+  clear: () => counter(0)
+});
+```
+
+### 3. Component Patterns
+
+```tsx
+// ✅ Good: Use useKeeper for component-specific needs
+function UserProfile({ userId }: { userId: string }) {
+  const userCache = useKeeper(() => new Map<string, User>());
+  
+  // This cache is unique to each UserProfile instance
+}
+
+// ✅ Good: Use keep() for shared state
+const globalSettings = keep({ theme: 'light' });
+
+function App() {
+  const settings = useKeep(globalSettings);
+  // All App instances share the same settings
+}
+```
+
+### 4. Type Safety
+
+```tsx
+// ✅ Good: Use TypeScript for better development experience
+interface AppState {
+  user: User | null;
+  isAuthenticated: boolean;
+}
+
+const appStore = keep<AppState>({
+  user: null,
+  isAuthenticated: false
+}, {
+  login: (user: User) => appStore(state => ({
+    ...state,
+    user,
+    isAuthenticated: true
+  })),
+  logout: () => appStore({
+    user: null,
+    isAuthenticated: false
+  })
+});
 ```
 
 ## TypeScript Support
 
-`use-keep` is written in TypeScript and provides full type safety:
+use-keep is built with TypeScript and provides excellent type safety:
 
-```typescript
-// Strongly typed store
-const typedStore = keep<{ count: number; name: string }>({
-  count: 0,
-  name: 'initial'
-});
-
+```tsx
 // Type inference works automatically
-const counter = keep(0); // inferred as keep<number>
-const user = keep({ name: 'John' }); // inferred as keep<{name: string}>
+const stringStore = keep('hello'); // KeepType<string>
+const numberStore = keep(42);       // KeepType<number>
 
-// Extended stores maintain types
-const enhancedCounter = keep(0, {
-  double: () => enhancedCounter(c => c * 2) // fully typed
+// Generic types for complex data
+interface User {
+  id: number;
+  name: string;
+}
+
+const userStore = keep<User | null>(null);
+
+// Extended stores maintain type safety
+const typedCounter = keep(0, {
+  increment: () => typedCounter(c => c + 1), // c is inferred as number
+  double: () => typedCounter(c => c * 2)     // Return type is void
 });
+
+// useKeep preserves the store's type
+function Component() {
+  const user = useKeep(userStore); // user is User | null
+  const count = useKeep(typedCounter); // count is number
+}
 ```
 
-## Comparison with Other Libraries
+## License
 
-| Feature | use-keep | useState | Zustand | Redux |
-|---------|----------|---------|---------|-------|
-| Bundle Size | ~1KB | Built-in | ~2KB | ~15KB+ |
-| Learning Curve | Minimal | None | Low | High |
-| Boilerplate | Very Low | None | Low | High |
-| TypeScript | Excellent | Good | Excellent | Good |
-| DevTools | React DevTools | React DevTools | Custom | Redux DevTools |
-| External State | ✅ | ❌ | ✅ | ✅ |
-
-## React Compatibility
-
-`use-keep` works with React 16.8+ through React 18+:
-
-- **React 18+**: Uses native `useSyncExternalStore`
-- **React 16-17**: Uses `use-sync-external-store` shim (automatically handled)
+MIT © [ksoze84](https://github.com/ksoze84)
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
+## Support
 
-MIT © [ksoze84 Felipe Rodriguez Herrera](https://github.com/ksoze84)
+If you find this library useful, please consider giving it a ⭐ on [GitHub](https://github.com/ksoze84/use-keep)!

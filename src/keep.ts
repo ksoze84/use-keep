@@ -46,14 +46,6 @@ export type KeepType<T> = {
    * @returns Unsubscribe function
    */
   subscribe: (listener: () => void) => () => void;
-  /** 
-   * Assigns additional methods to the store
-   * @template L The store type
-   * @template S The methods object type
-   * @param k Object containing additional methods
-   * @returns Store with additional methods attached
-   */
-  assign: <L extends KeepType<T>, S>(this: L, k: S | ((s: L) => S)) => L & S;
 }
 
 /**
@@ -71,33 +63,7 @@ export type KeepType<T> = {
  * counter(c => c + 1); // Increment using function
  * ```
  */
-export function keep<T>( initialState: T ): KeepType<T>;
-
-export function keep<T, S>( initialState: ((s: KeepType<T>) => S) ): KeepType<T> & S;
-
-/**
- * Creates a new store with initial state and additional methods.
- * 
- * @template T The type of the state value
- * @template S The type of the additional methods object
- * @param initialState Initial value for the store
- * @param k Object containing additional methods to attach to the store
- * @returns Store instance with additional methods
- * 
- * @example
- * ```typescript
- * const counter = keep(0, {
- *   increment: () => counter(c => c + 1),
- *   decrement: () => counter(c => c - 1),
- *   reset: () => counter(0)
- * });
- * 
- * counter.increment(); // Uses attached method
- * ```
- */
-export function keep<T, S>( initialState: T, k: S | ((s: KeepType<T>) => S) ): KeepType<T> & S;
-
-export function keep<T,S>( initialState: T, k?: S ){
+export function keep<T>( initialState: T ){
   const listeners = new Set<() => void>();
   
   /**
@@ -132,21 +98,7 @@ export function keep<T,S>( initialState: T, k?: S ){
   
   // Attach core methods to the state function
   state.subscribe = subscribe;
-  
-  /**
-   * Method to extend the store with additional functionality.
-   * Uses Object.assign to merge additional methods with the store.
-   * 
-   * @param k Object containing methods to add to the store
-   * @returns Store instance with additional methods attached
-   */
-  state.assign = function(this, k) {
-    return Object.assign(this, k instanceof Function ? k(this) : k);
-  }
-  
-  // If additional methods provided, assign them and return extended store
-  if (k)
-    return state.assign(k);
+
   return state;
 }
 
