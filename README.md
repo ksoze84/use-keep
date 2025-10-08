@@ -674,7 +674,7 @@ function ComponentWithTypedStore() {
 
 ## License
 
-MIT © [ksoze84](https://github.com/ksoze84)
+MIT © [Felipe Rodriguez Herrera](https://github.com/ksoze84)
 
 ## Contributing
 
