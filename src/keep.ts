@@ -22,7 +22,6 @@
  * SOFTWARE.
  */
 
-const notProvided = Symbol("notProvided");
 
 /**
  * Type definition for a keep store.
@@ -63,7 +62,7 @@ export type KeepType<T> = {
  * counter(c => c + 1); // Increment using function
  * ```
  */
-export function keep<T>( initialState: T ){
+export function keep<T>( initialState: T ) : KeepType<T> {
   const listeners = new Set<() => void>();
   
   /**
@@ -84,17 +83,17 @@ export function keep<T>( initialState: T ){
    * @param s Optional new value or updater function
    * @returns Current value when getting, undefined when setting
    */
-  const state = (( s : T|((s:T) => T) = notProvided as T) => {
-    if(s !== notProvided){ 
+  function state( s? : T|((s:T) => T) ) {
+    if(arguments.length === 1) { 
       // Setting: update value and notify listeners
-      initialState = typeof s === 'function' ? (s as (s:T) => T)(initialState) : s;
+      initialState = (typeof s === 'function' ? (s as (s:T) => T)(initialState) : s) as T;
       for (const listener of listeners) listener();
     }
     else {
       // Getting: return current value
       return initialState;
     }
-  }) as KeepType<T>;
+  };
   
   // Attach core methods to the state function
   state.subscribe = subscribe;
