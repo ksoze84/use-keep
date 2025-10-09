@@ -34,7 +34,7 @@ export type KeepType<T> = {
    * @param s New value or function that receives current value and returns new value
    * @returns undefined
    */
-  (s : T|((s:T) => T)|undefined): undefined;
+  (s : T|((s:T) => T)): undefined;
   /** 
    * Gets the current value from the store
    * @returns Current state value
@@ -63,7 +63,7 @@ export type KeepType<T> = {
  * counter(c => c + 1); // Increment using function
  * ```
  */
-export function keep<T>( initialState?: T ){
+export function keep<T>( initialState: T ){
   const listeners = new Set<() => void>();
   
   /**
@@ -84,10 +84,10 @@ export function keep<T>( initialState?: T ){
    * @param s Optional new value or updater function
    * @returns Current value when getting, undefined when setting
    */
-  const state = (( s : T|((s:T) => T)|undefined = notProvided as T) => {
+  const state = (( s : T|((s:T) => T) = notProvided as T) => {
     if(s !== notProvided){ 
       // Setting: update value and notify listeners
-      initialState = typeof s === 'function' ? (s as (s:T) => T)(initialState as T) : s;
+      initialState = typeof s === 'function' ? (s as (s:T) => T)(initialState) : s;
       for (const listener of listeners) listener();
     }
     else {

@@ -1,6 +1,6 @@
 {
   "name": "use-keep",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "A lightweight React state management library with external store capabilities",
   "keywords": [
     "react",
