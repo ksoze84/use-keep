@@ -62,7 +62,7 @@ export type KeepType<T> = {
  * counter(c => c + 1); // Increment using function
  * ```
  */
-export function keep<T>( initialState: T ) : KeepType<T> {
+export const keep = <T>( initialState: T ) => {
   const listeners = new Set<() => void>();
   
   /**
@@ -98,6 +98,6 @@ export function keep<T>( initialState: T ) : KeepType<T> {
   // Attach core methods to the state function
   state.subscribe = subscribe;
 
-  return state;
+  return state as KeepType<T>;
 }
 
