@@ -63,7 +63,7 @@ export type KeepType<T> = {
  * counter(c => c + 1); // Increment using function
  * ```
  */
-export function keep<T>( initialState: T ){
+export function keep<T>( initialState?: T ){
   const listeners = new Set<() => void>();
   
   /**
@@ -87,7 +87,7 @@ export function keep<T>( initialState: T ){
   const state = (( s : T|((s:T) => T) = notProvided as T) => {
     if(s !== notProvided){ 
       // Setting: update value and notify listeners
-      initialState = typeof s === 'function' ? (s as (s:T) => T)(initialState) : s;
+      initialState = typeof s === 'function' ? (s as (s:T) => T)(initialState as T) : s;
       for (const listener of listeners) listener();
     }
     else {
