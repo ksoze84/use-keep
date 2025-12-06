@@ -89,20 +89,27 @@ function MyComponent() {
   // Component re-renders when store changes
   return <div>{value}</div>;
 }
+
+// Multiple stores - returns a tuple
+function MultiStoreComponent() {
+  const [count, user, settings] = useKeep(counterStore, userStore, settingsStore);
+  // Component re-renders when any store changes
+  return <div>{user.name}: {count} (theme: {settings.theme})</div>;
+}
 ```
 
-### 3. **useKeeper()** - Create Local Stores
+### 3. **useKpro()** - Create Local Stores with Projections
 
 ```tsx
 function Component() {
   // Creates a store that exists only for this component instance
-  const localCounter = useKeeper(() => keep(0));
-  const count = useKeep(localCounter);
+  // with automatic projection of values
+  const [count, counter] = useKpro(() => keep(0), k => [k.use()]);
   
   return (
     <div>
       <span>{count}</span>
-      <button onClick={() => localCounter(c => c + 1)}>+</button>
+      <button onClick={() => counter(c => c + 1)}>+</button>
     </div>
   );
 }
@@ -133,25 +140,37 @@ const unsubscribe = store.subscribe(() => {
 ```
 
 ### `useKeep<T>(store: KeepType<T>): T`
+### `useKeep<T1, T2, ...>(...stores: KeepType<T1 | T2 | ...>[]): [T1, T2, ...]`
 
-React hook that subscribes to a store and returns its current value.
+React hook that subscribes to one or more stores and returns their current values.
 
 ```tsx
+// Single store
 function Component() {
   const value = useKeep(store);
   return <div>{value}</div>;
 }
+
+// Multiple stores - returns tuple of values
+function MultiComponent() {
+  const [count, user, isLoading] = useKeep(counterStore, userStore, loadingStore);
+  return (
+    <div>
+      {isLoading ? 'Loading...' : `${user.name}: ${count}`}
+    </div>
+  );
+}
 ```
 
-### `useKeeper<T>(factory: () => T): T`
+### `useKpro<T, P>(factory: () => T, projection: (value: T) => P): [...P, T]`
 
-React hook that creates and maintains a value that not change.
+React hook that creates and maintains a value with automatic projections.
 
 ```tsx
 function Component() {
-  // This store is unique to this component instance
-  const localStore = useKeeper(() => keep(0));
-  return <div>{useKeep(localStore)}</div>;
+  // This store is unique to this component instance with projected values
+  const [count, localStore] = useKpro(() => keep(0), k => [k.use()]);
+  return <div>{count}</div>;
 }
 ```
 
@@ -212,12 +231,11 @@ function Lamps() {
 }
 ```
 
-### Complex State Management with useKeeper
+### Local State Management with useKpro
 
 ```tsx
 function Cubes() {
-  const cubes = useKeeper(() => createCubeCounter(3));
-  const [cubeCount, { increment, decrement, reset }] = [cubes.use(), cubes];
+  const [cubeCount, { increment, decrement, reset }] = useKpro(() => createCubeCounter(3), c => [c.cubes.use()]);
   
   return (
     <>
@@ -232,11 +250,33 @@ function Cubes() {
 function createCubeCounter(initial = 0) {
   const cubes = keep(initial);
   return {
-    use: () => useKeep(cubes),
+    cubes,
     increment: () => cubes(c => c + 1),
     decrement: () => cubes(c => c - 1),
     reset: () => cubes(initial)
   };
+}
+```
+
+### Multiple Store Subscription
+
+```tsx
+// Multiple independent stores
+const counter = keep(0);
+const user = keep({ name: 'John', age: 25 });
+const theme = keep('light');
+
+function Dashboard() {
+  // Subscribe to multiple stores at once
+  const [count, userData, currentTheme] = useKeep(counter, user, theme);
+  
+  return (
+    <div className={`theme-${currentTheme}`}>
+      <h1>Welcome {userData.name}</h1>
+      <p>Count: {count}</p>
+      <p>Age: {userData.age}</p>
+    </div>
+  );
 }
 ```
 
@@ -268,12 +308,9 @@ export class ActividadesHandler {
 // Global instance
 export const activities = new ActividadesHandler();
 
-// Usage in components
+// Usage in components - multiple stores in one hook
 function App() {
-  const [acts, isLoading] = [
-    useKeep(activities.data), 
-    useKeep(activities.loading)
-  ];
+  const [acts, isLoading] = useKeep(activities.data, activities.loading);
 
   return (
     <div>
@@ -284,16 +321,12 @@ function App() {
 }
 ```
 
-### Local Instance with useKeeper
+### Local Instance with useKpro
 
 ```tsx
 function AppB() {
   // Each component instance gets its own handler
-  const actsHandler = useKeeper(() => new ActividadesHandler());
-  const [acts, loading] = [
-    useKeep(actsHandler.data), 
-    useKeep(actsHandler.loading)
-  ];
+  const [acts, loading, actsHandler] = useKpro(() => new ActivitiesHandler(), a => [a.data.use(), a.loading.use()]);
 
   useEffect(() => {
     actsHandler.load();
@@ -519,11 +552,11 @@ function Total() {
 
 ```tsx
 function ConditionalComponent({ useGlobal }: { useGlobal: boolean }) {
-  const store = useKeeper(() => 
-    useGlobal ? globalCounter : keep(0)
+  const [count] = useKpro(() => 
+    useGlobal ? globalCounter : keep(0),
+    store => [store.use()]
   );
   
-  const count = useKeep(store);
   return <div>{count}</div>;
 }
 ```
@@ -598,9 +631,9 @@ const clear = () => counter(0);
 ### 3. Component Patterns
 
 ```tsx
-// ✅ Good: Use useKeeper for component-specific needs
+// ✅ Good: Use useKpro for component-specific needs
 function UserProfile({ userId }: { userId: string }) {
-  const userCache = useKeeper(() => new Map<string, User>());
+  const [, userCache] = useKpro(() => new Map<string, User>(), cache => []);
   
   // This cache is unique to each UserProfile instance
 }
@@ -661,12 +694,16 @@ const userStore = keep<User | null>(null);
 function Component() {
   const user = useKeep(userStore); // user is User | null
   const count = useKeep(numberStore); // count is number
+  
+  // Multiple stores with automatic tuple typing
+  const [userData, countValue, isActive] = useKeep(userStore, numberStore, booleanStore);
+  // userData is User | null, countValue is number, isActive is boolean
 }
 
-// useKeeper with proper typing
+// useKpro with proper typing
 function ComponentWithTypedStore() {
-  const store = useKeeper(() => keep<string[]>([]));
-  const items = useKeep(store); // items is string[]
+  const [items] = useKpro(() => keep<string[]>([]), store => [store.use()]);
+  // items is string[]
   
   return <div>{items.length}</div>;
 }

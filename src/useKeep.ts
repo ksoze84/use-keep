@@ -28,12 +28,13 @@ import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { KeepType } from "./keep";
 
 
+
 /**
  * React hook that subscribes a component to store changes.
  * Uses React's useSyncExternalStore for optimal performance and concurrent features support.
  * The component will re-render whenever the store value changes.
  * 
- * @template T The type of the state value
+ * @template K The type of the state value
  * @param store Store instance created by keep()
  * @returns Current state value from the store
  * 
@@ -53,7 +54,36 @@ import { KeepType } from "./keep";
  * }
  * ```
  */
-export function useKeep<T>( store: KeepType<T> ) {
+export function useKeep<K>(store: KeepType<K>): K;
+/**
+ * A hook that retrieves and combines values from multiple Keep stores.
+ * 
+ * @template T - A readonly array type of KeepType instances
+ * @param stores - The Keep stores to retrieve values from
+ * @returns An object with the same structure as the input array, where each KeepType is replaced with its underlying value type
+ * 
+ * @example
+ * ```typescript
+ * const userStore = createKeep<User>(initialUser);
+ * const settingsStore = createKeep<Settings>(initialSettings);
+ * 
+ * const [user, settings] = useKeep(userStore, settingsStore);
+ * ```
+ */
+export function useKeep<T extends readonly KeepType<unknown>[]>(
+  ...stores: T
+): { [K in keyof T]: T[K] extends KeepType<infer S> ? S : never };
+// Generic variadic tuple type for useKeeps
+export function useKeep<T extends readonly KeepType<unknown>[]>(
+  ...stores: T
+) {
+  if (stores.length === 1) 
+    return useK(stores[0]);
+  return stores.map(k => useK(k));
+}
+
+
+function useK<T>( store: KeepType<T> ) {
   const state = useSyncExternalStore(
     store.subscribe,     // Subscribe function
     store,              // Get snapshot function (current value)
