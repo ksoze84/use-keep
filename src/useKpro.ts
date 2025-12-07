@@ -30,6 +30,12 @@ import { KeepType } from "./keep";
 
 const echo = <T>(t: T) => t;
 
+
+export function useKpro<S, T extends readonly KeepType<any>[]>(
+      generator: () => S, 
+      selector: (s: S) => [...T]
+    ): readonly [...{ [K in keyof T]: T[K] extends KeepType<infer U> ? U : never }, S];
+export function useKpro<S, K, M>(generator: () => S ) : [M extends KeepType<infer K> ? K : never, S]; 
 /**
  * A React hook for use a generator of Keep stores and handlers to use in local component state.
  * 
@@ -51,7 +57,11 @@ const echo = <T>(t: T) => t;
  * );
  * ```
  */
-export function useKpro<S, T extends readonly KeepType<any>[]>(generator: () => S, selector: (s: S) => [...T] ) {
+export function useKpro<S, T extends readonly KeepType<any>[]>(generator: () => S, selector?: (s: S) => [...T] ) {
   const [objS] = useReducer(echo, generator());
-  return [...(selector(objS).map(k => useKeep(k)) as { [K in keyof T]: T[K] extends KeepType<infer S> ? S : never } ), objS] as const
+
+  if (selector)
+    return [...(selector(objS).map(k => useKeep(k)) as { [K in keyof T]: T[K] extends KeepType<infer S> ? S : never } ), objS] as const
+
+  return [useKeep(objS as unknown as KeepType<any>), objS] as const;
 };

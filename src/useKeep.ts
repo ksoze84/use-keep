@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-import { useDebugValue } from "react";
+
 // @ts-ignore - use-sync-external-store shim for React <18 compatibility
 import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { KeepType } from "./keep";
@@ -70,11 +70,11 @@ export function useKeep<K>(store: KeepType<K>): K;
  * const [user, settings] = useKeep(userStore, settingsStore);
  * ```
  */
-export function useKeep<T extends readonly KeepType<unknown>[]>(
+export function useKeep<T extends readonly KeepType<any>[]>(
   ...stores: T
 ): { [K in keyof T]: T[K] extends KeepType<infer S> ? S : never };
 // Generic variadic tuple type for useKeeps
-export function useKeep<T extends readonly KeepType<unknown>[]>(
+export function useKeep<T extends readonly KeepType<any>[]>(
   ...stores: T
 ) {
   if (stores.length === 1) 
@@ -90,8 +90,6 @@ function useK<T>( store: KeepType<T> ) {
     store               // Server snapshot function (for SSR)
   );
   
-  // Enable React DevTools debugging
-  useDebugValue(state);
   return state;
 }
 
