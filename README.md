@@ -131,7 +131,7 @@ function AdvancedComponent() {
 
 ### 4. **Store Operations**
 
-Stores support both getter and setter operations:
+Stores support both getter and setter operations, signal style:
 
 ```tsx
 const store = keep(0);
