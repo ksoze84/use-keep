@@ -1,10 +1,11 @@
 # use-keep
 
-A lightweight React state management library with external store capabilities, providing simple yet powerful tools for managing component and application state.
-
 [![npm version](https://badge.fury.io/js/use-keep.svg)](https://badge.fury.io/js/use-keep)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/use-keep)](https://bundlephobia.com/package/use-keep)
+
+A lightweight React state management library that provides a simple alternative to useState with external store capabilities. Share state across components while maintaining React's hook patterns.
 
 ## Table of Contents
 
@@ -17,6 +18,8 @@ A lightweight React state management library with external store capabilities, p
 - [Advanced Usage](#advanced-usage)
 - [Best Practices](#best-practices)
 - [TypeScript Support](#typescript-support)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Installation
 
@@ -34,77 +37,72 @@ pnpm add use-keep
 
 ## Quick Start
 
-### Simple Counter Example
-
-The most basic usage - create a store and use it in components:
-
 ```tsx
 import { keep, useKeep } from 'use-keep';
 
-// Create a store outside your component
+// Create a store
 const counter = keep(0);
+
+// Create actions
+const increment = () => counter(c => c + 1);
+const decrement = () => counter(c => c - 1);
+const reset = () => counter(0);
 
 function Counter() {
   const count = useKeep(counter);
   
   return (
     <div>
-      <span>Count: {count}</span>
-      <button onClick={() => counter(c => c + 1)}>+</button>
-      <button onClick={() => counter(c => c - 1)}>-</button>
-      <button onClick={() => counter(0)}>Reset</button>
+      <h1>Count: {count}</h1>
+      <button onClick={increment}>+</button>
+      <button onClick={decrement}>-</button>
+      <button onClick={reset}>Reset</button>
     </div>
   );
 }
 ```
 
-That's it! Multiple components using the same store will automatically stay in sync.
-
 ## Core Concepts
 
 ### 1. **keep()** - Create Stores
 
+`keep()` creates a stateful store that can be shared across components:
+
 ```tsx
-// Simple store
+// Simple value store
 const count = keep(0);
 
-// Store with initial complex data
+// Object store
 const user = keep({ name: 'John', age: 25 });
 
-// Get current value
-console.log(count()); // 0
-
-// Set new value
-count(5);
-
-// Update with function
-count(c => c + 1);
+// Array store  
+const todos = keep([]);
 ```
 
 ### 2. **useKeep()** - Subscribe to Stores
 
-```tsx
-function MyComponent() {
-  const value = useKeep(myStore);
-  // Component re-renders when store changes
-  return <div>{value}</div>;
-}
-
-// Multiple stores - returns a tuple
-function MultiStoreComponent() {
-  const [count, user, settings] = useKeep(counterStore, userStore, settingsStore);
-  // Component re-renders when any store changes
-  return <div>{user.name}: {count} (theme: {settings.theme})</div>;
-}
-```
-
-### 3. **useKpro()** - Create Local Stores with Projections
+`useKeep()` is a React hook that subscribes to one or more stores:
 
 ```tsx
 function Component() {
-  // Creates a store that exists only for this component instance
-  // with automatic projection of values
-  const [count, counter] = useKpro(() => keep(0), k => [k.use()]);
+  // Single store
+  const count = useKeep(counter);
+  
+  // Multiple stores
+  const [count, user, todos] = useKeep(counterStore, userStore, todoStore);
+  
+  return <div>{count} - {user.name}</div>;
+}
+```
+
+### 3. **useKpro()** - Component-Local State with Projections
+
+`useKpro()` creates component-scoped stores that don't persist between unmounts:
+
+```tsx
+function Component() {
+  // Creates a local store unique to this component instance
+  const [count, counter] = useKpro(() => keep(0));
   
   return (
     <div>
@@ -113,6 +111,39 @@ function Component() {
     </div>
   );
 }
+
+// Advanced: With projection for complex state
+function AdvancedComponent() {
+  const [count, { increment, decrement }] = useKpro(
+    () => createCounter(0),
+    state => [state.count] // Project only the count value
+  );
+  
+  return (
+    <div>
+      <span>{count}</span>
+      <button onClick={increment}>+</button>
+      <button onClick={decrement}>-</button>
+    </div>
+  );
+}
+```
+
+### 4. **Store Operations**
+
+Stores support both getter and setter operations:
+
+```tsx
+const store = keep(0);
+
+// Get current value
+const value = store();
+
+// Set new value
+store(5);
+
+// Update with function
+store(current => current + 1);
 ```
 
 ## API Reference
@@ -133,7 +164,7 @@ store(newValue);
 // Update with function
 store(currentValue => newValue);
 
-// Subscribe to changes
+// Subscribe to changes (used internally by useKeep)
 const unsubscribe = store.subscribe(() => {
   console.log('Store changed:', store());
 });
@@ -162,15 +193,70 @@ function MultiComponent() {
 }
 ```
 
-### `useKpro<T, P>(factory: () => T, projection: (value: T) => P): [...P, T]`
+### `useKpro<K>(generator: () => KeepType<K>): readonly [K, KeepType<K>]`
+### `useKpro<S, T>(generator: () => S, selector: (s: S) => [...T]): readonly [...ProjectedValues, S]`
 
-React hook that creates and maintains a value with automatic projections.
+React hook that creates component-local state that doesn't persist between component unmounts. Supports projection patterns for selecting specific values from complex state objects.
 
 ```tsx
-function Component() {
-  // This store is unique to this component instance with projected values
-  const [count, localStore] = useKpro(() => keep(0), k => [k.use()]);
-  return <div>{count}</div>;
+// Basic usage - creates a local store
+function SimpleComponent() {
+  const [count, countStore] = useKpro(() => keep(0));
+  
+  return (
+    <div>
+      <span>Count: {count}</span>
+      <button onClick={() => countStore(c => c + 1)}>+</button>
+    </div>
+  );
+}
+
+// Advanced usage - with projection for complex state
+function AdvancedComponent() {
+  const [count, name, stateObject] = useKpro(
+    () => ({
+      counter: keep(0),
+      user: keep({ name: 'John' }),
+      increment: function() { this.counter(c => c + 1); },
+      setName: function(name: string) { this.user(u => ({ ...u, name })); }
+    }),
+    state => [state.counter, state.user] // Project counter and user values
+  );
+  
+  return (
+    <div>
+      <p>Count: {count} | User: {name.name}</p>
+      <button onClick={() => stateObject.increment()}>+</button>
+      <button onClick={() => stateObject.setName('Jane')}>Change Name</button>
+    </div>
+  );
+}
+
+// Component-scoped counter factory
+function CounterComponent() {
+  const [count, { increment, decrement, reset }] = useKpro(
+    () => createCounter(5), // Each component gets its own counter starting at 5
+    counter => [counter.count] // Project only the count value
+  );
+  
+  return (
+    <div>
+      <span>Local Count: {count}</span>
+      <button onClick={increment}>+</button>
+      <button onClick={decrement}>-</button>
+      <button onClick={reset}>Reset</button>
+    </div>
+  );
+}
+
+function createCounter(initial: number) {
+  const count = keep(initial);
+  return {
+    count,
+    increment: () => count(c => c + 1),
+    decrement: () => count(c => c - 1),
+    reset: () => count(initial)
+  };
 }
 ```
 
@@ -182,19 +268,19 @@ function Component() {
 import { keep, useKeep } from 'use-keep';
 
 // Global store
-const chairs = keep(0);
+const counter = keep(0);
 
 // Global actions
-const increment = () => chairs(s => s + 1);
-const decrement = () => chairs(s => s - 1);
-const reset = () => chairs(0);
+const increment = () => counter(s => s + 1);
+const decrement = () => counter(s => s - 1);
+const reset = () => counter(0);
 
-function Chairs() {
-  const chairCount = useKeep(chairs);
+function Counter() {
+  const count = useKeep(counter);
   
   return (
     <>
-      <span>Chairs: {chairCount}</span>
+      <span>Count: {count}</span>
       <button onClick={increment}>+</button>
       <button onClick={decrement}>-</button>
       <button onClick={reset}>Reset</button>
@@ -206,55 +292,31 @@ function Chairs() {
 ### Store Factory Pattern
 
 ```tsx
-const createLampStore = (lamp = keep(0)) => {
+const createCounterStore = (initialValue = 0) => {
+  const store = keep(initialValue);
+  
   return {
-    useL: () => useKeep(lamp),
-    add: () => lamp(lamp() + 1),
-    sub: () => lamp(l => --l),
-    reset: () => lamp(0)
+    useValue: () => useKeep(store),
+    increment: () => store(s => s + 1),
+    decrement: () => store(s => s - 1),
+    reset: () => store(initialValue),
+    setValue: (value: number) => store(value)
   };
 };
 
-const lamps = createLampStore();
+const counter = createCounterStore(10);
 
-function Lamps() {
-  const lampCount = lamps.useL();
+function Counter() {
+  const count = counter.useValue();
   
   return (
     <>
-      <span>Lamps: {lampCount}</span>
-      <button onClick={lamps.add}>+</button>
-      <button onClick={lamps.sub}>-</button>
-      <button onClick={lamps.reset}>Reset</button>
+      <span>Count: {count}</span>
+      <button onClick={counter.increment}>+</button>
+      <button onClick={counter.decrement}>-</button>
+      <button onClick={counter.reset}>Reset</button>
     </>
   );
-}
-```
-
-### Local State Management with useKpro
-
-```tsx
-function Cubes() {
-  const [cubeCount, { increment, decrement, reset }] = useKpro(() => createCubeCounter(3), c => [c.cubes.use()]);
-  
-  return (
-    <>
-      <span>Cubes: {cubeCount}</span>
-      <button onClick={increment}>+</button>
-      <button onClick={decrement}>-</button>
-      <button onClick={reset}>Reset</button>
-    </>
-  );
-}
-
-function createCubeCounter(initial = 0) {
-  const cubes = keep(initial);
-  return {
-    cubes,
-    increment: () => cubes(c => c + 1),
-    decrement: () => cubes(c => c - 1),
-    reset: () => cubes(initial)
-  };
 }
 ```
 
@@ -280,288 +342,67 @@ function Dashboard() {
 }
 ```
 
-### Data Loading with Classes
+### Component-Local State with useKpro
 
 ```tsx
-export class ActividadesHandler {
-  public data = keep([] as Record<string, any>[]);
-  public loading = keep(false);
-
-  load = () => {
-    this.loading(true);
-    return fetch('/api/activities')
-      .then(r => r.json())
-      .then(data => {
-        this.loading(false);
-        this.data(data);
-      });
-  }
-
-  setProduct = (e: ChangeEvent<HTMLInputElement>, id: string) => {
-    const value = e.target.value;
-    this.data(this.data().map(item => 
-      item.id === id ? { ...item, product: value } : item
-    ));
-  }
-}
-
-// Global instance
-export const activities = new ActividadesHandler();
-
-// Usage in components - multiple stores in one hook
-function App() {
-  const [acts, isLoading] = useKeep(activities.data, activities.loading);
-
-  return (
-    <div>
-      {isLoading ? 'Loading...' : `${acts.length} items loaded`}
-      <button onClick={activities.load}>Reload</button>
-    </div>
-  );
-}
-```
-
-### Local Instance with useKpro
-
-```tsx
-function AppB() {
-  // Each component instance gets its own handler
-  const [acts, loading, actsHandler] = useKpro(() => new ActivitiesHandler(), a => [a.data.use(), a.loading.use()]);
-
-  useEffect(() => {
-    actsHandler.load();
-  }, []);
-
-  return (
-    <div>
-      <span>
-        {loading ? 'Loading...' : `${acts.length} activities found`}
-      </span>
-      <button onClick={actsHandler.load}>Search</button>
-    </div>
-  );
-}
-```
-
-## Comparison with Other Libraries
-
-| Feature | **use-keep** | **Redux** | **Zustand** | **Jotai** |
-|---------|-------------|-----------|-------------|-----------|
-| **Bundle Size** | ~2KB | ~47KB (with RTK) | ~8KB | ~13KB |
-| **Learning Curve** | Minimal | Steep | Moderate | Moderate |
-| **Boilerplate** | Almost none | High | Low | Low |
-| **TypeScript** | Excellent | Good (with RTK) | Excellent | Excellent |
-| **DevTools** | React DevTools | Redux DevTools | Redux DevTools | React DevTools |
-| **Async Actions** | Manual | Thunks/RTK Query | Built-in | Suspense |
-| **Subscriptions** | Direct store access | connect/useSelector | Direct access | Direct access |
-| **Store Creation** | `keep(value)` | `createStore(reducer)` | `create(set => ({}))` | `atom(value)` |
-| **Actions** | Direct mutations | Dispatched actions | Direct mutations | Direct updates |
-| **Middleware** | None | Extensive | Basic | Basic |
-| **Time Travel** | No | Yes | With devtools | With devtools |
-| **SSR Support** | Yes | Yes | Yes | Yes |
-| **Persistence** | Manual | Manual/plugins | Built-in | Built-in |
-| **Code Splitting** | Natural | Complex | Natural | Natural |
-| **Performance** | Excellent | Good | Excellent | Excellent |
-
-### Detailed Comparison
-
-#### **Bundle Size & Performance**
-- **use-keep**: Smallest footprint (~2KB), excellent performance with `useSyncExternalStore`
-- **Redux**: Large bundle especially with dev tools, good performance with proper optimization
-- **Zustand**: Small and performant, good balance
-- **Jotai**: Medium size, atomic updates provide excellent performance
-
-#### **Developer Experience**
-- **use-keep**: Minimal API, start coding immediately
-- **Redux**: Structured but verbose, requires understanding of actions/reducers
-- **Zustand**: Simple API with powerful features
-- **Jotai**: Atomic approach, great for fine-grained reactivity
-
-#### **Use Cases**
-
-**Choose use-keep when:**
-- You want the smallest possible bundle
-- You prefer direct state mutations
-- You need both global and local state patterns
-- You want minimal learning curve
-- You're building lightweight applications
-
-**Choose Redux when:**
-- You need extensive middleware ecosystem
-- You require time-travel debugging
-- You have complex state logic
-- You're working with large teams needing structure
-
-**Choose Zustand when:**
-- You want Redux-like patterns without boilerplate
-- You need built-in persistence
-- You want good balance of features and simplicity
-
-**Choose Jotai when:**
-- You prefer atomic state management
-- You need fine-grained reactivity
-- You're building complex applications with many state pieces
-
-### Migration Examples
-
-#### From Redux to use-keep
-
-```tsx
-// Redux
-const counterSlice = createSlice({
-  name: 'counter',
-  initialState: { value: 0 },
-  reducers: {
-    increment: (state) => { state.value += 1 },
-    decrement: (state) => { state.value -= 1 },
-    reset: (state) => { state.value = 0 }
-  }
-});
-
-function Counter() {
-  const count = useSelector(state => state.counter.value);
-  const dispatch = useDispatch();
+// Each component instance gets its own isolated state
+function LocalCounterComponent() {
+  const [count, counter] = useKpro(() => keep(0));
   
   return (
     <div>
-      <span>{count}</span>
-      <button onClick={() => dispatch(counterSlice.actions.increment())}>+</button>
-    </div>
-  );
-}
-
-// use-keep equivalent
-const counter = keep(0);
-
-function Counter() {
-  const count = useKeep(counter);
-  
-  return (
-    <div>
-      <span>{count}</span>
+      <h3>Local Counter: {count}</h3>
       <button onClick={() => counter(c => c + 1)}>+</button>
-    </div>
-  );
-}
-```
-
-#### From Zustand to use-keep
-
-```tsx
-// Zustand
-const useStore = create((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-  decrement: () => set((state) => ({ count: state.count - 1 })),
-  reset: () => set({ count: 0 })
-}));
-
-function Counter() {
-  const { count, increment, decrement, reset } = useStore();
-  return (
-    <div>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
+      <button onClick={() => counter(c => c - 1)}>-</button>
+      <button onClick={() => counter(0)}>Reset</button>
     </div>
   );
 }
 
-// use-keep equivalent
-const counter = keep(0);
-const increment = () => counter(c => c + 1);
-const decrement = () => counter(c => c - 1);
-const reset = () => counter(0);
-
-function Counter() {
-  const count = useKeep(counter);
-  return (
-    <div>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
-    </div>
+// Advanced: Component-local state with projection
+function LocalStateWithProjection() {
+  const [items, loading, { addItem, setLoading }] = useKpro(
+    () => createDataManager(),
+    manager => [manager.items, manager.loading] // Project specific values
   );
-}
-```
-
-#### From Jotai to use-keep
-
-```tsx
-// Jotai
-const countAtom = atom(0);
-const incrementAtom = atom(null, (get, set) => {
-  set(countAtom, get(countAtom) + 1);
-});
-
-function Counter() {
-  const [count] = useAtom(countAtom);
-  const [, increment] = useAtom(incrementAtom);
   
   return (
     <div>
-      <span>{count}</span>
-      <button onClick={increment}>+</button>
+      <p>Items: {items.length}, Loading: {loading ? 'Yes' : 'No'}</p>
+      <button onClick={() => addItem('New Item')}>Add Item</button>
+      <button onClick={() => setLoading(!loading)}>Toggle Loading</button>
     </div>
   );
 }
 
-// use-keep equivalent
-const counter = keep(0);
-
-function Counter() {
-  const count = useKeep(counter);
+function createDataManager() {
+  const items = keep<string[]>([]);
+  const loading = keep(false);
   
-  return (
-    <div>
-      <span>{count}</span>
-      <button onClick={() => counter(c => c + 1)}>+</button>
-    </div>
-  );
-}
-```
-
-## Advanced Usage
-
-### Store Composition
-
-```tsx
-const figures = () => {
-  const triangles = keep(0);
-  const squares = keep(0);
-  const circles = keep(0);
-
   return {
-    useTriangles: () => [useKeep(triangles), {
-      increment: () => triangles(t => t + 1),
-      decrement: () => triangles(t => t - 1),
-      reset: () => triangles(0)
-    }] as const,
-    
-    useTotal: () => useKeep(triangles) + useKeep(squares) + useKeep(circles)
+    items,
+    loading,
+    addItem: (item: string) => items(current => [...current, item]),
+    setLoading: (isLoading: boolean) => loading(isLoading),
+    clear: () => items([])
   };
-};
-
-const shapesStore = figures();
-
-function Total() {
-  const total = shapesStore.useTotal();
-  return <h1>Total: {total}</h1>;
 }
-```
 
-### Conditional Store Creation
-
-```tsx
-function ConditionalComponent({ useGlobal }: { useGlobal: boolean }) {
-  const [count] = useKpro(() => 
-    useGlobal ? globalCounter : keep(0),
-    store => [store.use()]
+// Using multiple instances - each gets independent state
+function MultipleInstanceDemo() {
+  return (
+    <div>
+      <h2>Independent Counter Instances</h2>
+      <LocalCounterComponent /> {/* Counter A */}
+      <LocalCounterComponent /> {/* Counter B */}
+      <LocalCounterComponent /> {/* Counter C */}
+      {/* Each counter maintains its own state independently */}
+    </div>
   );
-  
-  return <div>{count}</div>;
 }
 ```
 
-### Store with Complex State
+### Complex State Management
 
 ```tsx
 interface TodoState {
@@ -592,6 +433,124 @@ const setFilter = (filter: TodoState['filter']) => todoStore(state => ({
   ...state,
   filter
 }));
+
+function TodoApp() {
+  const { items, filter, loading } = useKeep(todoStore);
+  
+  const filteredItems = items.filter(item => {
+    if (filter === 'active') return !item.completed;
+    if (filter === 'completed') return item.completed;
+    return true;
+  });
+  
+  if (loading) return <div>Loading...</div>;
+  
+  return (
+    <div>
+      <input 
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') {
+            addTodo(e.currentTarget.value);
+            e.currentTarget.value = '';
+          }
+        }}
+      />
+      {filteredItems.map(item => (
+        <div key={item.id} onClick={() => toggleTodo(item.id)}>
+          {item.text} {item.completed ? '✓' : '○'}
+        </div>
+      ))}
+      <button onClick={() => setFilter('all')}>All</button>
+      <button onClick={() => setFilter('active')}>Active</button>
+      <button onClick={() => setFilter('completed')}>Completed</button>
+    </div>
+  );
+}
+```
+
+## Comparison with Other Libraries
+
+| Feature | **use-keep** | **Redux** | **Zustand** | **Jotai** |
+|---------|-------------|-----------|-------------|-----------|
+| **Bundle Size** | ~2KB | ~47KB (with RTK) | ~8KB | ~13KB |
+| **Learning Curve** | Minimal | Steep | Moderate | Moderate |
+| **Boilerplate** | Almost none | High | Low | Low |
+| **TypeScript** | Excellent | Good (with RTK) | Excellent | Excellent |
+| **DevTools** | React DevTools | Redux DevTools | Redux DevTools | React DevTools |
+| **Store Creation** | `keep(value)` | `createStore(reducer)` | `create(set => ({}))` | `atom(value)` |
+| **Actions** | Direct updates | Dispatched actions | Direct mutations | Direct updates |
+| **Performance** | Excellent | Good | Excellent | Excellent |
+
+### When to Choose use-keep
+
+**Choose use-keep when:**
+- You want the smallest possible bundle size
+- You prefer direct state updates over actions/reducers
+- You need both global and component-scoped state patterns
+- You want minimal learning curve and setup
+- You're building lightweight applications
+- You like React's useState API but need external stores
+- You need atomic and structured state management
+
+**Consider other libraries when:**
+- You need extensive middleware ecosystem (Redux)
+- You require time-travel debugging (Redux)
+- You need built-in persistence (Zustand)
+- You prefer only atomic state management (Jotai)
+
+## Advanced Usage
+
+### Store Composition
+
+```tsx
+const createAppState = () => {
+  const user = keep<User | null>(null);
+  const settings = keep({ theme: 'light', lang: 'en' });
+  const notifications = keep<Notification[]>([]);
+
+  return {
+    user: {
+      store: user,
+      login: (userData: User) => user(userData),
+      logout: () => user(null),
+      useValue: () => useKeep(user)
+    },
+    settings: {
+      store: settings,
+      setTheme: (theme: string) => settings(s => ({ ...s, theme })),
+      setLang: (lang: string) => settings(s => ({ ...s, lang })),
+      useValue: () => useKeep(settings)
+    },
+    notifications: {
+      store: notifications,
+      add: (notification: Notification) => notifications(n => [...n, notification]),
+      remove: (id: string) => notifications(n => n.filter(notif => notif.id !== id)),
+      useValue: () => useKeep(notifications)
+    },
+    useAll: () => useKeep(user, settings, notifications)
+  };
+};
+
+const appState = createAppState();
+```
+
+### Conditional Rendering with Multiple Stores
+
+```tsx
+function UserDashboard() {
+  const [user, settings, notifications] = appState.useAll();
+  
+  if (!user) return <LoginForm />;
+  
+  return (
+    <div className={`theme-${settings.theme}`}>
+      <h1>Welcome {user.name}</h1>
+      {notifications.length > 0 && (
+        <NotificationBanner notifications={notifications} />
+      )}
+    </div>
+  );
+}
 ```
 
 ## Best Practices
@@ -599,11 +558,11 @@ const setFilter = (filter: TodoState['filter']) => todoStore(state => ({
 ### 1. Store Organization
 
 ```tsx
-// ✅ Good: Organize related stores
-const userStore = {
-  profile: keep(null as User | null),
+// ✅ Good: Organize related stores together
+const userState = {
+  profile: keep<User | null>(null),
   preferences: keep({ theme: 'light', lang: 'en' }),
-  sessions: keep([])
+  sessions: keep<Session[]>([])
 };
 
 // ❌ Avoid: Too many separate global stores
@@ -612,42 +571,7 @@ const userAge = keep(0);
 const userEmail = keep('');
 ```
 
-### 2. Action Functions
-
-```tsx
-// ✅ Good: Clear, consistent naming
-const counter = keep(0);
-const increment = () => counter(c => c + 1);
-const decrement = () => counter(c => c - 1);
-const reset = () => counter(0);
-const set = (value: number) => counter(value);
-
-// ❌ Avoid: Unclear function names
-const plus = () => counter(c => c + 1);
-const sub = () => counter(c => c - 1);
-const clear = () => counter(0);
-```
-
-### 3. Component Patterns
-
-```tsx
-// ✅ Good: Use useKpro for component-specific needs
-function UserProfile({ userId }: { userId: string }) {
-  const [, userCache] = useKpro(() => new Map<string, User>(), cache => []);
-  
-  // This cache is unique to each UserProfile instance
-}
-
-// ✅ Good: Use keep() for shared state
-const globalSettings = keep({ theme: 'light' });
-
-function App() {
-  const settings = useKeep(globalSettings);
-  // All App instances share the same settings
-}
-```
-
-### 4. Type Safety
+### 2. Type Safety
 
 ```tsx
 // ✅ Good: Use TypeScript for better development experience
@@ -673,6 +597,77 @@ const logout = () => appStore({
 });
 ```
 
+### 3. Performance Optimization
+
+```tsx
+// ✅ Good: Subscribe to specific parts of state
+const userStore = keep({ profile: null, settings: {} });
+
+function UserProfile() {
+  // Only re-renders when userStore changes
+  const user = useKeep(userStore);
+  return <div>{user.profile?.name}</div>;
+}
+
+// ✅ Good: Multiple granular stores for better performance
+const userProfile = keep(null);
+const userSettings = keep({});
+
+function UserProfile() {
+  // Only re-renders when userProfile changes
+  const profile = useKeep(userProfile);
+  return <div>{profile?.name}</div>;
+}
+```
+
+### 4. useKpro vs useKeep Guidelines
+
+```tsx
+// ✅ Use useKeep for shared global state
+const globalSettings = keep({ theme: 'light', lang: 'en' });
+
+function SettingsPanel() {
+  const settings = useKeep(globalSettings);
+  // All instances share the same settings
+  return <div>Theme: {settings.theme}</div>;
+}
+
+// ✅ Use useKpro for component-local state
+function SearchableList({ items }: { items: Item[] }) {
+  const [query, setQuery, filteredItems] = useKpro(
+    () => createSearchState(items),
+    state => [state.query, state.filteredItems]
+  );
+  
+  // Each SearchableList instance has its own search state
+  return (
+    <div>
+      <input value={query} onChange={(e) => setQuery(e.target.value)} />
+      {filteredItems.map(item => <div key={item.id}>{item.name}</div>)}
+    </div>
+  );
+}
+
+// ✅ Use useKpro for temporary or derived state
+function FormWithValidation() {
+  const [values, errors, { setValue, validate }] = useKpro(
+    () => createFormState(),
+    form => [form.values, form.errors]
+  );
+  
+  // Form state is local to each form instance
+  return (
+    <form onSubmit={() => validate()}>
+      <input 
+        value={values.email} 
+        onChange={(e) => setValue('email', e.target.value)}
+      />
+      {errors.email && <span className="error">{errors.email}</span>}
+    </form>
+  );
+}
+```
+
 ## TypeScript Support
 
 use-keep is built with TypeScript and provides excellent type safety:
@@ -696,27 +691,92 @@ function Component() {
   const count = useKeep(numberStore); // count is number
   
   // Multiple stores with automatic tuple typing
-  const [userData, countValue, isActive] = useKeep(userStore, numberStore, booleanStore);
-  // userData is User | null, countValue is number, isActive is boolean
+  const [userData, countValue] = useKeep(userStore, numberStore);
+  // userData is User | null, countValue is number
 }
 
-// useKpro with proper typing
-function ComponentWithTypedStore() {
-  const [items] = useKpro(() => keep<string[]>([]), store => [store.use()]);
-  // items is string[]
+// Function updates with proper typing
+const updateUser = (updater: (user: User | null) => User | null) => {
+  userStore(updater);
+};
+
+// useKpro with TypeScript
+interface CounterState {
+  count: KeepType<number>;
+  increment: () => void;
+  decrement: () => void;
+  reset: () => void;
+}
+
+function TypedUseKproComponent() {
+  // Type inference works automatically
+  const [count, counterState] = useKpro((): CounterState => {
+    const countStore = keep(0);
+    return {
+      count: countStore,
+      increment: () => countStore(c => c + 1),
+      decrement: () => countStore(c => c - 1),
+      reset: () => countStore(0)
+    };
+  });
+  // count: number, counterState: CounterState
   
-  return <div>{items.length}</div>;
+  return (
+    <div>
+      <span>Count: {count}</span>
+      <button onClick={counterState.increment}>+</button>
+    </div>
+  );
+}
+
+// useKpro with projection and TypeScript
+function TypedProjectionComponent() {
+  const [items, loading, manager] = useKpro(
+    () => createTypedDataManager(),
+    (state) => [state.items, state.loading] as const
+  );
+  // items: string[], loading: boolean, manager: DataManager
+  
+  return (
+    <div>
+      <p>Items: {items.length}, Loading: {loading.toString()}</p>
+      <button onClick={() => manager.addItem('New')}>Add Item</button>
+    </div>
+  );
+}
+
+interface DataManager {
+  items: KeepType<string[]>;
+  loading: KeepType<boolean>;
+  addItem: (item: string) => void;
+}
+
+function createTypedDataManager(): DataManager {
+  const items = keep<string[]>([]);
+  const loading = keep<boolean>(false);
+  
+  return {
+    items,
+    loading,
+    addItem: (item: string) => items(current => [...current, item])
+  };
 }
 ```
-
-## License
-
-MIT © [Felipe Rodriguez Herrera](https://github.com/ksoze84)
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Support
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+MIT © [Felipe Rodriguez Herrera](https://github.com/ksoze84)
+
+---
 
 If you find this library useful, please consider giving it a ⭐ on [GitHub](https://github.com/ksoze84/use-keep)!

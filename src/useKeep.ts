@@ -47,12 +47,6 @@ import { KeepType } from "./keep";
  *   return <div>Count: {count}</div>;
  * }
  * 
- * // Equivalent to using store.use()
- * function CounterAlt() {
- *   const count = counter.use();
- *   return <div>Count: {count}</div>;
- * }
- * ```
  */
 export function useKeep<K>(store: KeepType<K>): K;
 /**
@@ -64,8 +58,8 @@ export function useKeep<K>(store: KeepType<K>): K;
  * 
  * @example
  * ```typescript
- * const userStore = createKeep<User>(initialUser);
- * const settingsStore = createKeep<Settings>(initialSettings);
+ * const userStore = keep<User>(initialUser);
+ * const settingsStore = keep<Settings>(initialSettings);
  * 
  * const [user, settings] = useKeep(userStore, settingsStore);
  * ```
@@ -73,17 +67,18 @@ export function useKeep<K>(store: KeepType<K>): K;
 export function useKeep<T extends readonly KeepType<any>[]>(
   ...stores: T
 ): { [K in keyof T]: T[K] extends KeepType<infer S> ? S : never };
-// Generic variadic tuple type for useKeeps
+
+
 export function useKeep<T extends readonly KeepType<any>[]>(
   ...stores: T
 ) {
   if (stores.length === 1) 
     return useK(stores[0]);
-  return stores.map(k => useK(k));
+  return stores.map(useK);
 }
 
 
-function useK<T>( store: KeepType<T> ) {
+export function useK<T>( store: KeepType<T> ) {
   const state = useSyncExternalStore(
     store.subscribe,     // Subscribe function
     store,              // Get snapshot function (current value)
