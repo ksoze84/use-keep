@@ -5,7 +5,7 @@
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
 [![Bundle Size](https://img.shields.io/bundlephobia/minzip/use-keep)](https://bundlephobia.com/package/use-keep)
 
-A lightweight React state management library that provides a simple alternative to useState with external store capabilities. Share state across components while maintaining React's hook patterns.
+A (yet another) simple and lightweight React state management library. Share state across components while maintaining React's hook patterns.
 
 ## Table of Contents
 
