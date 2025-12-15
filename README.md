@@ -205,9 +205,9 @@ function MultiComponent() {
 ```
 
 ### `useKpr<K>(generator: () => KeepType<K>): readonly [K, KeepType<K>]`
-### `useKpr<S, T>(generator: () => S, selector: (s: S) => [...T]): readonly [...ProjectedValues, S]`
+### `useKpr<S, T>(generator: () => S, selector: (s: S) => [...T]): readonly [...SelectedValues, S]`
 
-React hook that creates component-local state that doesn't persist between component unmounts. Supports projection patterns for selecting specific values from complex state objects.
+React hook that creates component-local state that doesn't persist between component unmounts. Supports selection specific values from complex state objects to minimize re-renders.
 
 ```tsx
 // Basic usage - creates a local store
@@ -226,7 +226,7 @@ function SimpleComponent() {
 function CounterComponent() {
   const [count, { increment, decrement, reset }] = useKpr(
     () => createCounter(5), // Each component gets its own counter starting at 5
-    counter => [counter.count] // Project only the count value
+    counter => [counter.count] // select only the count value
   );
   
   return (
@@ -349,11 +349,11 @@ function LocalCounterComponent() {
   );
 }
 
-// Advanced: Component-local state with projection
-function LocalStateWithProjection() {
+// Advanced: Component-local state
+function LocalStateWithSelection() {
   const [items, loading, { addItem, setLoading }] = useKpr(
     () => createDataManager(),
-    manager => [manager.items, manager.loading] // Project specific values
+    manager => [manager.items, manager.loading] // Select specific values
   );
   
   return (
@@ -687,7 +687,7 @@ function Component() {
 
 
 // useKpr with TypeScript
-function TypedProjectionComponent() {
+function TypedSelectionComponent() {
   const [items, loading, manager] = useKpr(
     () => createTypedDataManager(),
     (state) => [state.items, state.loading] as const
