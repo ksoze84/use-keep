@@ -42,7 +42,7 @@ const echo = <T>(t: T) => t;
  * const [count, countKeeper] = useKpro(() => keep(0));
  * ```
  */
-export function useKpro<K>(generator: () => KeepType<K> ) : readonly [K, KeepType<K>]; 
+export function useKpr<K>(generator: () => KeepType<K> ) : readonly [K, KeepType<K>]; 
 
 
 /**
@@ -64,13 +64,13 @@ export function useKpro<K>(generator: () => KeepType<K> ) : readonly [K, KeepTyp
  * );
  * ```
  */
-export function useKpro<S, T extends readonly KeepType<any>[]>(
+export function useKpr<S, T extends readonly KeepType<any>[]>(
       generator: () => S, 
       selector: (s: S) => [...T]
     ): readonly [...{ [K in keyof T]: T[K] extends KeepType<infer U> ? U : never }, S];
 
 
-export function useKpro<S, T extends readonly KeepType<any>[]>(generator: () => S, selector?: (s: S) => [...T] ) {
+export function useKpr<S, T extends readonly KeepType<any>[]>(generator: () => S, selector?: (s: S) => [...T] ) {
   const [objS] = useReducer(echo, generator());
 
   if (selector)

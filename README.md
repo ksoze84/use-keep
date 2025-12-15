@@ -95,14 +95,14 @@ function Component() {
 }
 ```
 
-### 3. **useKpro()** - Component-Local State with Projections
+### 3. **useKpr()** - Component-Local State
 
-`useKpro()` creates component-scoped stores that don't persist between unmounts:
+`useKpr()` creates component-scoped stores that don't persist between unmounts:
 
 ```tsx
 function Component() {
   // Creates a local store unique to this component instance
-  const [count, counter] = useKpro(() => keep(0));
+  const [count, counter] = useKpr(() => keep(0));
   
   return (
     <div>
@@ -112,11 +112,12 @@ function Component() {
   );
 }
 
-// Advanced: With projection for complex state
+
+// Advanced: With selector for complex state
 function AdvancedComponent() {
-  const [count, { increment, decrement }] = useKpro(
+  const [count, { increment, decrement }] = useKpr(
     () => createCounter(0),
-    state => [state.count] // Project only the count value
+    state => [state.count] // select only the count value
   );
   
   return (
@@ -127,6 +128,16 @@ function AdvancedComponent() {
     </div>
   );
 }
+
+const createCounter = (initial: number) => {
+  const count = keep(initial);
+  return {
+    count,
+    increment: () => count(c => c + 1),
+    decrement: () => count(c => c - 1)
+  };
+};
+
 ```
 
 ### 4. **Store Operations**
@@ -193,15 +204,15 @@ function MultiComponent() {
 }
 ```
 
-### `useKpro<K>(generator: () => KeepType<K>): readonly [K, KeepType<K>]`
-### `useKpro<S, T>(generator: () => S, selector: (s: S) => [...T]): readonly [...ProjectedValues, S]`
+### `useKpr<K>(generator: () => KeepType<K>): readonly [K, KeepType<K>]`
+### `useKpr<S, T>(generator: () => S, selector: (s: S) => [...T]): readonly [...ProjectedValues, S]`
 
 React hook that creates component-local state that doesn't persist between component unmounts. Supports projection patterns for selecting specific values from complex state objects.
 
 ```tsx
 // Basic usage - creates a local store
 function SimpleComponent() {
-  const [count, countStore] = useKpro(() => keep(0));
+  const [count, countStore] = useKpr(() => keep(0));
   
   return (
     <div>
@@ -211,30 +222,9 @@ function SimpleComponent() {
   );
 }
 
-// Advanced usage - with projection for complex state
-function AdvancedComponent() {
-  const [count, name, stateObject] = useKpro(
-    () => ({
-      counter: keep(0),
-      user: keep({ name: 'John' }),
-      increment: function() { this.counter(c => c + 1); },
-      setName: function(name: string) { this.user(u => ({ ...u, name })); }
-    }),
-    state => [state.counter, state.user] // Project counter and user values
-  );
-  
-  return (
-    <div>
-      <p>Count: {count} | User: {name.name}</p>
-      <button onClick={() => stateObject.increment()}>+</button>
-      <button onClick={() => stateObject.setName('Jane')}>Change Name</button>
-    </div>
-  );
-}
-
 // Component-scoped counter factory
 function CounterComponent() {
-  const [count, { increment, decrement, reset }] = useKpro(
+  const [count, { increment, decrement, reset }] = useKpr(
     () => createCounter(5), // Each component gets its own counter starting at 5
     counter => [counter.count] // Project only the count value
   );
@@ -342,12 +332,12 @@ function Dashboard() {
 }
 ```
 
-### Component-Local State with useKpro
+### Component-Local State with useKpr
 
 ```tsx
 // Each component instance gets its own isolated state
 function LocalCounterComponent() {
-  const [count, counter] = useKpro(() => keep(0));
+  const [count, counter] = useKpr(() => keep(0));
   
   return (
     <div>
@@ -361,7 +351,7 @@ function LocalCounterComponent() {
 
 // Advanced: Component-local state with projection
 function LocalStateWithProjection() {
-  const [items, loading, { addItem, setLoading }] = useKpro(
+  const [items, loading, { addItem, setLoading }] = useKpr(
     () => createDataManager(),
     manager => [manager.items, manager.loading] // Project specific values
   );
@@ -402,40 +392,55 @@ function MultipleInstanceDemo() {
 }
 ```
 
-### Complex State Management
+### Extensible State Management
 
 ```tsx
-interface TodoState {
-  items: Todo[];
-  filter: 'all' | 'active' | 'completed';
-  loading: boolean;
+class TodoManager {
+
+  public items = keep<Todo[]>([]);
+  public filter = keep<'all' | 'active' | 'completed'>('all');
+  public loading = keep<boolean>(false);
+  
+  public addTodo = (text: string) => this.items( current => [
+    ...current,
+    { id: Date.now(), text, completed: false }
+  ]);
+
+  public toggleTodo = (id: number) => this.items( current => 
+    current.map(todo => 
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    )
+  );
+
+  public setFilter = (filter: 'all' | 'active' | 'completed' ) => this.filter(filter);
+
 }
 
-const todoStore = keep<TodoState>({
-  items: [],
-  filter: 'all',
-  loading: false
-});
+// Extending
+class SomeTodoManager extends TodoManager {
 
-const addTodo = (text: string) => todoStore(state => ({
-  ...state,
-  items: [...state.items, { id: Date.now(), text, completed: false }]
-}));
+  public clearCompleted = () => this.items( current => 
+    current.filter(todo => !todo.completed)
+  );
 
-const toggleTodo = (id: number) => todoStore(state => ({
-  ...state,
-  items: state.items.map(item => 
-    item.id === id ? { ...item, completed: !item.completed } : item
-  )
-}));
+  public loadTodos = async () => {
+    this.loading(true);
+    const response = await fetch('/api/todos');
+    const data: Todo[] = await response.json();
+    this.items(data);
+    this.loading(false);
+  };
+}
 
-const setFilter = (filter: TodoState['filter']) => todoStore(state => ({
-  ...state,
-  filter
-}));
+const todoStore = new SomeTodoManager();
+
+//some react framework loader:
+function loader = () => {
+  todoStore.loadTodos();
+};
 
 function TodoApp() {
-  const { items, filter, loading } = useKeep(todoStore);
+  const { items, filter, loading } = useKeep(todoStore.items, todoStore.filter, todoStore.loading);
   
   const filteredItems = items.filter(item => {
     if (filter === 'active') return !item.completed;
@@ -600,7 +605,7 @@ const logout = () => appStore({
 ### 3. Performance Optimization
 
 ```tsx
-// ✅ Good: Subscribe to specific parts of state
+// ❌ avoid: Large monolithic stores causing unnecessary re-renders
 const userStore = keep({ profile: null, settings: {} });
 
 function UserProfile() {
@@ -620,7 +625,7 @@ function UserProfile() {
 }
 ```
 
-### 4. useKpro vs useKeep Guidelines
+### 4. useKpr vs useKeep Guidelines
 
 ```tsx
 // ✅ Use useKeep for shared global state
@@ -632,25 +637,10 @@ function SettingsPanel() {
   return <div>Theme: {settings.theme}</div>;
 }
 
-// ✅ Use useKpro for component-local state
-function SearchableList({ items }: { items: Item[] }) {
-  const [query, setQuery, filteredItems] = useKpro(
-    () => createSearchState(items),
-    state => [state.query, state.filteredItems]
-  );
-  
-  // Each SearchableList instance has its own search state
-  return (
-    <div>
-      <input value={query} onChange={(e) => setQuery(e.target.value)} />
-      {filteredItems.map(item => <div key={item.id}>{item.name}</div>)}
-    </div>
-  );
-}
-
-// ✅ Use useKpro for temporary or derived state
+// ✅ Use useKpr for component-local state
+// ✅ Use useKpr for temporary or derived state
 function FormWithValidation() {
-  const [values, errors, { setValue, validate }] = useKpro(
+  const [values, errors, { setValue, validate }] = useKpr(
     () => createFormState(),
     form => [form.values, form.errors]
   );
@@ -695,43 +685,10 @@ function Component() {
   // userData is User | null, countValue is number
 }
 
-// Function updates with proper typing
-const updateUser = (updater: (user: User | null) => User | null) => {
-  userStore(updater);
-};
 
-// useKpro with TypeScript
-interface CounterState {
-  count: KeepType<number>;
-  increment: () => void;
-  decrement: () => void;
-  reset: () => void;
-}
-
-function TypedUseKproComponent() {
-  // Type inference works automatically
-  const [count, counterState] = useKpro((): CounterState => {
-    const countStore = keep(0);
-    return {
-      count: countStore,
-      increment: () => countStore(c => c + 1),
-      decrement: () => countStore(c => c - 1),
-      reset: () => countStore(0)
-    };
-  });
-  // count: number, counterState: CounterState
-  
-  return (
-    <div>
-      <span>Count: {count}</span>
-      <button onClick={counterState.increment}>+</button>
-    </div>
-  );
-}
-
-// useKpro with projection and TypeScript
+// useKpr with TypeScript
 function TypedProjectionComponent() {
-  const [items, loading, manager] = useKpro(
+  const [items, loading, manager] = useKpr(
     () => createTypedDataManager(),
     (state) => [state.items, state.loading] as const
   );
