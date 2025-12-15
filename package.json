@@ -1,6 +1,6 @@
 {
   "name": "use-keep",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "A lightweight React state management library with external store capabilities",
   "keywords": [
     "react",
@@ -44,7 +44,7 @@
     "@types/react": ">=16",
     "@types/use-sync-external-store": "^1.5.0",
     "typescript": "~5.9.3",
-    "vite": "^7.1.7",
+    "vite": "^7.3.0",
     "vite-plugin-dts": "^4.5.4"
   },
   "peerDependencies": {
