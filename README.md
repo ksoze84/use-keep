@@ -490,7 +490,7 @@ function TodoApp() {
 
 **Choose use-keep when:**
 - You want the smallest possible bundle size
-- You need atomic and escalable state management
+- You need simple but scalable state management
 - You need both global and component-scoped state patterns
 - You want minimal learning curve and setup
 - You're building lightweight applications
@@ -609,7 +609,7 @@ const logout = () => appStore({
 const userStore = keep({ profile: null, settings: {} });
 
 function UserProfile() {
-  // Only re-renders when userStore changes
+  // re-renders when settings changes ❌
   const user = useKeep(userStore);
   return <div>{user.profile?.name}</div>;
 }
