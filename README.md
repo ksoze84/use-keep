@@ -490,7 +490,7 @@ function TodoApp() {
 
 **Choose use-keep when:**
 - You want the smallest possible bundle size
-- You prefer direct state updates over actions/reducers
+- You need atomic and escalable state management
 - You need both global and component-scoped state patterns
 - You want minimal learning curve and setup
 - You're building lightweight applications
