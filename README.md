@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/use-keep.svg)](https://badge.fury.io/js/use-keep)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/%3C%2F%3E-TypeScript-%230074c1.svg)](http://www.typescriptlang.org/)
-[![Bundle Size](https://img.shields.io/bundlephobia/minzip/use-keep)](https://bundlephobia.com/package/use-keep)
+[![Bundle Size](https://deno.bundlejs.com/badge?q=use-keep@1.3.3,use-keep@1.3.3&treeshake=[*],[{+useKeep+}])](https://bundlejs.com/?q=use-keep@1.3.3,use-keep@1.3.3&treeshake=[*],[{+useKeep+}])
 
 A (yet another) simple and lightweight React state management library. Share state across components while maintaining React's hook patterns.
 
