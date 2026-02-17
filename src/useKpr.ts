@@ -22,13 +22,11 @@
  * SOFTWARE.
  */
 
-import { useReducer } from "react";
+import { useRef } from "react";
 import { useK } from "./useKeep";
 import { KeepType } from "./keep";
 
 
-
-const echo = <T>(t: T) => t;
 
 /**
  * A custom React hook that manages state using a Keep pattern generator function.
@@ -71,10 +69,12 @@ export function useKpr<S, T extends readonly KeepType<any>[]>(
 
 
 export function useKpr<S, T extends readonly KeepType<any>[]>(generator: () => S, selector?: (s: S) => [...T] ) {
-  const [objS] = useReducer(echo, generator());
+  const objSRef = useRef<S | undefined>(undefined);
+  objSRef.current ??= generator();
 
   if (selector)
-    return [...(selector(objS).map(useK) as { [K in keyof T]: T[K] extends KeepType<infer S> ? S : never } ), objS] as const
+    return [...(selector(objSRef.current).map(useK) as { [K in keyof T]: T[K] extends KeepType<infer S> ? S : never } ), objSRef.current] as const
 
-  return [useK(objS as KeepType<any>), objS] as const;
+  return [useK(objSRef.current as KeepType<any>), objSRef.current] as const; //NOSONAR
 };
+  
