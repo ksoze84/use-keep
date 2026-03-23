@@ -26,7 +26,9 @@ import { useRef } from "react";
 import { useK } from "./useKeep";
 import { KeepType } from "./keep";
 
-
+function isConstructor<S>(fn: (new () => S) | (() => S)): fn is new () => S {
+  return fn.prototype !== undefined && fn.prototype.constructor === fn;
+}
 
 /**
  * A custom React hook that manages state using a Keep pattern generator function.
@@ -41,6 +43,14 @@ import { KeepType } from "./keep";
  * ```
  */
 export function useKpr<K>(generator: () => KeepType<K> ) : readonly [K, KeepType<K>]; 
+
+
+
+
+export function useKpr<S, T extends readonly KeepType<any>[]>(
+      generator: new () => S, 
+      selector: (s: S) => [...T]
+    ): readonly [...{ [K in keyof T]: T[K] extends KeepType<infer U> ? U : never }, S];
 
 
 /**
@@ -68,9 +78,9 @@ export function useKpr<S, T extends readonly KeepType<any>[]>(
     ): readonly [...{ [K in keyof T]: T[K] extends KeepType<infer U> ? U : never }, S];
 
 
-export function useKpr<S, T extends readonly KeepType<any>[]>(generator: () => S, selector?: (s: S) => [...T] ) {
+export function useKpr<S, T extends readonly KeepType<any>[]>(generator: (new () => S) | (() => S), selector?: (s: S) => [...T] ) {
   const objSRef = useRef<S | undefined>(undefined);
-  objSRef.current ??= generator();
+  objSRef.current ??= isConstructor(generator) ? new generator() : generator();
 
   if (selector)
     return [...(selector(objSRef.current).map(useK) as { [K in keyof T]: T[K] extends KeepType<infer S> ? S : never } ), objSRef.current] as const
