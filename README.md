@@ -60,41 +60,35 @@ const count = useKeep(counter);
 const [count, user, theme] = useKeep(counterStore, userStore, themeStore);
 ```
 
-### `useKpr(generator, selector?)`
+### `useKpr(generator, selector)`
 
-Creates **component-local** state (via `useRef`) — each instance gets its own isolated stores that are destroyed on unmount.
+Creates **component-local** state from an object whose properties include `KeepType` stores. Each component instance gets its own isolated state (via `useRef`), destroyed on unmount.
 
-**Simple** — wraps a single `keep`:
-
-```tsx
-const [count, counter] = useKpr(() => keep(0));
-// count = current value, counter = KeepType store
-```
-
-**With selector** — extracts specific `KeepType` properties from a factory:
+- `generator` — a factory function `() => S` or a class constructor `new () => S` that produces the state object. Called once per component instance.
+- `selector` — picks which `KeepType` members to subscribe to. Returns an array of stores.
+- **Returns** `readonly [...extractedValues, stateObject]` — the resolved values from the selected stores, followed by the full state object as the last element.
 
 ```tsx
+// Factory function
 const [count, name, state] = useKpr(
   () => ({ count: keep(0), name: keep(''), reset() { /* ... */ } }),
   s => [s.count, s.name]
 );
-// Extracted values first, full state object last
-```
+// count = 0, name = '', state = full object with reset()
 
-**With class constructor** — the class is `new`-ed once per component instance:
-
-```tsx
+// Class constructor — instantiated with `new` once per component
 const [items, filter, todos] = useKpr(
   TodoManager,
   s => [s.items, s.filter]
 );
+// items & filter are reactive values; todos = TodoManager instance
 ```
 
 ## Patterns
 
 ### Store Factory
 
-Encapsulate a store with its actions:
+Encapsulate related stores and actions in a factory, then use globally with `useKeep` or locally with `useKpr`:
 
 ```tsx
 function createCounter(initial = 0) {
@@ -107,21 +101,21 @@ function createCounter(initial = 0) {
   };
 }
 
-// Global — shared between components
+// Global — shared between all components
 const appCounter = createCounter(10);
 
-function Counter() {
+function GlobalCounter() {
   const count = useKeep(appCounter.count);
   return <button onClick={appCounter.increment}>{count}</button>;
 }
 
-// Local — isolated per component instance
+// Local — each instance gets its own counter
 function LocalCounter() {
-  const [count, { increment, reset }] = useKpr(
+  const [count, counter] = useKpr(
     () => createCounter(0),
     s => [s.count]
   );
-  return <button onClick={increment}>{count}</button>;
+  return <button onClick={counter.increment}>{count}</button>;
 }
 ```
 
@@ -218,7 +212,7 @@ const userState = {
 };
 ```
 
-**`useKeep`** for shared/global state. **`useKpr`** for component-local or temporary state (forms, modals, list items with independent state).
+**`useKeep`** for shared/global state. **`useKpr`** for component-local state built from objects with `KeepType` members (forms, modals, list items with independent state). The selector determines which stores trigger re-renders — non-selected `KeepType` properties and plain methods/values are still accessible via the state object (last tuple element) without causing extra re-renders.
 
 ## Contributing
 
